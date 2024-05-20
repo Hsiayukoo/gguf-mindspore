@@ -4,9 +4,6 @@ from typing import Any, List, TypeVar
 import numpy as np
 
 
-ALIGNMENT = np.uint32(32)
-
-
 class GGUFException(Exception):
     pass
 
@@ -78,8 +75,13 @@ class FormatCharacter:
     INT64 = "q"
     FLOAT32 = "f"
     FLOAT64 = "d"
+    FLOAT16 = "e"
     BOOL = "?"
 
+
+ggml_type_np_type_dict = {
+    GGMLType.F32: FormatCharacter.FLOAT32, GGMLType.F16: FormatCharacter.FLOAT16
+}
 
 FORMAT_CHARACTER_DICT = {
     "UINT8": "B",
@@ -128,6 +130,8 @@ T = TypeVar("T", np.uint8, np.int8, np.uint16, np.int16, np.uint32, np.int32, np
 
 K = TypeVar("K", np.uint8, np.int8, np.uint16, np.int16, np.uint32, np.int32, np.float32, np.uint64, np.int64,
             np.float64)
+
+V = TypeVar("V", np.float32, np.float16, np.uint8)
 
 
 class GGUFMetadataValue(metaclass=abc.ABCMeta):
@@ -182,16 +186,9 @@ class GGUFHeader:
         self.metadata_kv = metadata_kv
 
 
-def align_offset(offset: np.uint64) -> np.uint64:
-    """
-    :param offset:  UINT64.
-    :return: UINT64.
-    """
-    return (offset + (ALIGNMENT - (offset % ALIGNMENT)) % ALIGNMENT).astype(np.uint64)
-
-
 class GGUFTensorInfo:
-    def __init__(self, name: GGUFString, n_dimensions: np.uint32, dimensions: [np.uint64], type_: GGMLType, offset: np.uint64):
+    def __init__(self, name: GGUFString, n_dimensions: np.uint32, dimensions: [np.uint64], type_: GGMLType,
+                 offset: np.uint64):
         """
         :param name:
         :param n_dimensions: UINT32
@@ -207,7 +204,10 @@ class GGUFTensorInfo:
 
     def __str__(self):
         return "name: {0}, n_dimensions: {1}, dimensions: {2}, type: {3}, offset: {4}".format(str(self.name),
-               self.n_dimensions, self.dimensions, str(self.type), self.offset)
+                                                                                              self.n_dimensions,
+                                                                                              self.dimensions,
+                                                                                              str(self.type),
+                                                                                              self.offset)
 
 
 class GGUFFile:

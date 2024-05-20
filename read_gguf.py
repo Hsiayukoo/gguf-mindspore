@@ -4,7 +4,8 @@ from typing import List, BinaryIO
 import numpy as np
 
 from constant import FormatCharacter, GGUFException, GGUFTensorInfo, GGUFMetadataKV, GGUFString, \
-    GGUFMetadataValueType, GGUF_METADATA_TYPR_NUMBER_SET, FORMAT_CHARACTER_DICT, FORMAT_NP_TYPE_DICT, K, GGMLType
+    GGUFMetadataValueType, GGUF_METADATA_TYPR_NUMBER_SET, FORMAT_CHARACTER_DICT, FORMAT_NP_TYPE_DICT, K, GGMLType, V, \
+    ggml_type_np_type_dict
 
 VALID_MAGIC_NUMBER = b"GGUF"
 VALID_GGUF_VERSION = 3
@@ -22,6 +23,8 @@ class GGUFLoader:
         self.metadata: List[GGUFMetadataKV] = []
         self.tensor_infos: List[GGUFTensorInfo] = []
         self.f: BinaryIO = None
+        self.alignment: int = 32
+        self.tensors: List[List[V]] = []
 
     @staticmethod
     def auto_struct_unpack(f: BinaryIO, format_: str) -> K:
@@ -51,6 +54,11 @@ class GGUFLoader:
             array_length = GGUFLoader.auto_struct_unpack(f, FormatCharacter.UINT64)
             return [GGUFLoader.get_gguf_metadata_value(f, array_value_type) for _ in range(array_length)]
         raise GGUFException("unexpected metadata value type.")
+
+    @staticmethod
+    def padding(cur_offset: int, alignment: int) -> int:
+        """adjust offset"""
+        return np.uint64(cur_offset + (alignment - (cur_offset % alignment)) % alignment)
 
     def _set_up(self):
         """
@@ -121,6 +129,29 @@ class GGUFLoader:
             offset = GGUFLoader.auto_struct_unpack(self.f, FormatCharacter.UINT64)
             self.tensor_infos.append(GGUFTensorInfo(name, n_dimensions, dimensions, type_, offset))
 
+    def _adjust_tensors_info(self, adjust_offset: int):
+        """adjust tensors info offset"""
+        for i in range(len(self.tensor_infos)):
+            self.tensor_infos[i].offset += np.uint64(adjust_offset)
+
+    def _read_tensors(self):
+        """using tensors info to read tensors"""
+        for tensor_info in self.tensor_infos:
+            start_offset = tensor_info.offset
+            # first we should move to the start_offset
+            if tensor_info.offset >= self.f.tell():
+                self.f.read(np.uint64(start_offset - self.f.tell()))
+                # read tensors
+                tensor_length = np.uint64(np.cumprod(tensor_info.dimensions)[-1])
+                temp_tensor = []
+                for _ in range(tensor_length):
+                    if tensor_info.type in ggml_type_np_type_dict:
+                        temp_tensor.append(GGUFLoader.auto_struct_unpack(self.f, ggml_type_np_type_dict[tensor_info.type]))
+                    else:
+                        temp_tensor.append(
+                            GGUFLoader.auto_struct_unpack(self.f, "B"))
+                self.tensors.append(temp_tensor)
+
     def load_and_print(self):
         """
         main function to load GGUF info and print summary
@@ -135,6 +166,8 @@ class GGUFLoader:
             self._read_metadata_kv_count()
             self._read_metadata_key_value_pairs()
             self._read_tensors_info()
+            self._adjust_tensors_info(GGUFLoader.padding(self.f.tell(), self.alignment))
+            self._read_tensors()
         except GGUFException as e:
             print(e)
             self._tear_down()
@@ -143,19 +176,14 @@ class GGUFLoader:
 
 
 if __name__ == "__main__":
-    path = r"D:\PyGGUF\dummy.gguf"
+    path = "dummy.gguf"
     gguf_loader = GGUFLoader(path)
     gguf_loader.load_and_print()
     metadata = gguf_loader.metadata
     tensors_info = gguf_loader.tensor_infos
-    print("\n============ metadata ============")
-    for meta_data in metadata:
-        print(meta_data)
-    print("\n============ tensors info ============")
-    for tensor_info in tensors_info:
-        print(tensor_info)
-
-
-
-
-
+    # print("\n============ metadata ============")
+    # for meta_data in metadata:
+    #     print(meta_data)
+    # print("\n============ tensors info ============")
+    # for tensor_info in tensors_info:
+    #     print(tensor_info)
