@@ -5,7 +5,7 @@ import numpy as np
 
 from constant import FormatCharacter, GGUFException, GGUFTensorInfo, GGUFMetadataKV, GGUFString, \
     GGUFMetadataValueType, GGUF_METADATA_TYPR_NUMBER_SET, FORMAT_CHARACTER_DICT, FORMAT_NP_TYPE_DICT, K, GGMLType, V, \
-    ggml_type_np_type_dict
+    GGML_QUANT_SIZES_DICT
 
 VALID_MAGIC_NUMBER = b"GGUF"
 VALID_GGUF_VERSION = 3
@@ -142,14 +142,19 @@ class GGUFLoader:
             if tensor_info.offset >= self.f.tell():
                 self.f.read(np.uint64(start_offset - self.f.tell()))
                 # read tensors
-                tensor_length = np.uint64(np.cumprod(tensor_info.dimensions)[-1])
+                tensor_length = np.uint64(np.prod(tensor_info.dimensions))
+                block_size, type_size = GGML_QUANT_SIZES_DICT[tensor_info.type]
+                n_bytes = tensor_length * type_size // block_size
                 temp_tensor = []
-                for _ in range(tensor_length):
-                    if tensor_info.type in ggml_type_np_type_dict:
-                        temp_tensor.append(GGUFLoader.auto_struct_unpack(self.f, ggml_type_np_type_dict[tensor_info.type]))
-                    else:
-                        temp_tensor.append(
-                            GGUFLoader.auto_struct_unpack(self.f, "B"))
+                if tensor_info.type == GGMLType.F32:
+                    for _ in range(tensor_length):
+                        temp_tensor.append(GGUFLoader.auto_struct_unpack(self.f, FormatCharacter.FLOAT32))
+                elif tensor_info.type == GGMLType.F16:
+                    for _ in range(tensor_length):
+                        temp_tensor.append(np.frombuffer(self.f.read(2), dtype=np.float16)[0])
+                else:
+                    for _ in range(int(n_bytes)):
+                        temp_tensor.append(GGUFLoader.auto_struct_unpack(self.f, "B"))
                 self.tensors.append(temp_tensor)
 
     def load_and_print(self):
@@ -176,14 +181,6 @@ class GGUFLoader:
 
 
 if __name__ == "__main__":
-    path = "dummy.gguf"
+    path = "qwen1_5-0_5b-chat-q2_k.gguf"
     gguf_loader = GGUFLoader(path)
     gguf_loader.load_and_print()
-    metadata = gguf_loader.metadata
-    tensors_info = gguf_loader.tensor_infos
-    # print("\n============ metadata ============")
-    # for meta_data in metadata:
-    #     print(meta_data)
-    # print("\n============ tensors info ============")
-    # for tensor_info in tensors_info:
-    #     print(tensor_info)

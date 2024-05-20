@@ -223,3 +223,23 @@ class GGUFFile:
         self.tensor_infos = tensor_infos
         self.padding = padding
         self.tensor_data = tensor_data
+
+
+QK_K = 256
+# refer to gguf package, value is (block size, type size)
+GGML_QUANT_SIZES_DICT = {
+    GGMLType.F32:  (1, 4),
+    GGMLType.F16:  (1, 2),
+    GGMLType.Q4_0: (32, 2 + 16),
+    GGMLType.Q4_1: (32, 2 + 2 + 16),
+    GGMLType.Q5_0: (32, 2 + 4 + 16),
+    GGMLType.Q5_1: (32, 2 + 2 + 4 + 16),
+    GGMLType.Q8_0: (32, 2 + 32),
+    GGMLType.Q8_1: (32, 4 + 4 + 32),
+    GGMLType.Q2_K: (256, 2 + 2 + QK_K // 16 + QK_K // 4),
+    GGMLType.Q3_K: (256, 2 + QK_K // 4 + QK_K // 8 + 12),
+    GGMLType.Q4_K: (256, 2 + 2 + QK_K // 2 + 12),
+    GGMLType.Q5_K: (256, 2 + 2 + QK_K // 2 + QK_K // 8 + 12),
+    GGMLType.Q6_K: (256, 2 + QK_K // 2 + QK_K // 4 + QK_K // 16),
+    GGMLType.Q8_K: (256, 4 + QK_K + QK_K // 8),
+}
