@@ -5,6 +5,7 @@ import copy
 import json
 
 import mindspore as ms
+from mindspore import ops
 
 
 class MsCkptRefactorHelper:
@@ -32,6 +33,12 @@ class MsCkptRefactorHelper:
             self.full_name_ms_to_gguf_map[ckpt_layer_names_copy[i]] = ckpt_layer_names[i]
         for rename_layer in self.full_name_ms_to_gguf_map:
             self.ckpt_dict[self.full_name_ms_to_gguf_map[rename_layer]] = self.ckpt_dict.pop(rename_layer)
+
+    def _layer_tensor_transpose(self):
+        for layer in self.ckpt_dict:
+            # todo: now only support 2d
+            if self.ckpt_dict[layer].dim() == 2:
+                self.ckpt_dict[layer] = ops.transpose(self.ckpt_dict[layer], (1, 0))
 
     def do_refactor(self):
         self._read_name_map_json()

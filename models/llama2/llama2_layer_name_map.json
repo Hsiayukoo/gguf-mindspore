@@ -9,5 +9,6 @@
   "feed_forward.w1": "ffn.gate",
   "feed_forward.w3": "ffn_up",
   "feed_forward.w2": "ffn.down",
-  "ffn_norm": "ffn_norm"
+  "ffn_norm": "ffn_norm",
+  "model.norm_out.weight": "output_norm.weight"
 }
