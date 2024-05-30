@@ -1,3 +1,5 @@
+import os.path
+import shutil
 import struct
 from typing import List, BinaryIO
 
@@ -10,6 +12,7 @@ from constant import FormatCharacter, GGUFException, GGUFTensorInfo, GGUFMetadat
 VALID_MAGIC_NUMBER = b"GGUF"
 VALID_GGUF_VERSION = 3
 ENCODING = "utf-8"
+_TENSORS_SAVING_PATH = "./tensors_temp_saving_folder"
 
 
 class GGUFLoader:
@@ -136,26 +139,31 @@ class GGUFLoader:
 
     def _read_tensors(self):
         """using tensors info to read tensors"""
-        for tensor_info in self.tensor_infos:
-            start_offset = tensor_info.offset
-            # first we should move to the start_offset
-            if tensor_info.offset >= self.f.tell():
-                self.f.read(np.uint64(start_offset - self.f.tell()))
-                # read tensors
-                tensor_length = np.uint64(np.prod(tensor_info.dimensions))
-                block_size, type_size = GGML_QUANT_SIZES_DICT[tensor_info.type]
-                n_bytes = tensor_length * type_size // block_size
-                temp_tensor = []
-                if tensor_info.type == GGMLType.F32:
-                    for _ in range(tensor_length):
-                        temp_tensor.append(GGUFLoader.auto_struct_unpack(self.f, FormatCharacter.FLOAT32))
-                elif tensor_info.type == GGMLType.F16:
-                    for _ in range(tensor_length):
-                        temp_tensor.append(np.frombuffer(self.f.read(2), dtype=np.float16)[0])
-                else:
-                    for _ in range(int(n_bytes)):
-                        temp_tensor.append(GGUFLoader.auto_struct_unpack(self.f, "B"))
-                self.tensors.append(temp_tensor)
+        for i, tensor_info in enumerate(self.tensor_infos):
+            if os.path.exists(_TENSORS_SAVING_PATH):
+                shutil.rmtree(_TENSORS_SAVING_PATH)
+                os.mkdir(_TENSORS_SAVING_PATH)
+            else:
+                os.mkdir(_TENSORS_SAVING_PATH)
+            with open(_TENSORS_SAVING_PATH + os.sep + "tensor_temp{0}.txt".format(i)) as f:
+                start_offset = tensor_info.offset
+                # first we should move to the start_offset
+                if tensor_info.offset >= self.f.tell():
+                    self.f.read(np.uint64(start_offset - self.f.tell()))
+                    # read tensors
+                    tensor_length = np.uint64(np.prod(tensor_info.dimensions))
+                    block_size, type_size = GGML_QUANT_SIZES_DICT[tensor_info.type]
+                    n_bytes = tensor_length * type_size // block_size
+                    # we should not save tensors in memory, because it may be too large
+                    if tensor_info.type == GGMLType.F32:
+                        for _ in range(tensor_length):
+                            f.write(str(GGUFLoader.auto_struct_unpack(self.f, FormatCharacter.FLOAT32)) + ",")
+                    elif tensor_info.type == GGMLType.F16:
+                        for _ in range(tensor_length):
+                            f.write(str(np.frombuffer(self.f.read(2), dtype=np.float16)[0]) + ",")
+                    else:
+                        for _ in range(int(n_bytes)):
+                            f.write(str(GGUFLoader.auto_struct_unpack(self.f, "B")) + ",")
 
     def load_and_print(self):
         """
@@ -180,7 +188,7 @@ class GGUFLoader:
             self._tear_down()
 
 
-if __name__ == "__main__":
-    path = "qwen1_5-0_5b-chat-q2_k.gguf"
-    gguf_loader = GGUFLoader(path)
-    gguf_loader.load_and_print()
+# if __name__ == "__main__":
+#     path = "qwen1_5-0_5b-chat-q2_k.gguf"
+#     gguf_loader = GGUFLoader(path)
+#     gguf_loader.load_and_print()
