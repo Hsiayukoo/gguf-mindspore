@@ -3,12 +3,26 @@
 """
 import copy
 import json
+import logging
 
 import mindspore as ms
+import numpy as np
 from mindspore import ops
 
 
 class MsCkptRefactorHelper:
+
+    @staticmethod
+    def convert_ms_tensor_to_ndarray(ms_tensor: ms.Tensor, tensor_name: str) -> np.ndarray:
+        """
+        converts ms tensor to ndarray.
+        :param ms_tensor:
+        :param tensor_name:
+        :return:
+        """
+        logging.info("now convert ms tensor name is: {0}".format(tensor_name))
+        return ms_tensor.asnumpy()
+
     def __init__(self, ms_ckpt_path: str, name_map_path: str):
         """
         :param ms_ckpt_path: ms ckpt file path
