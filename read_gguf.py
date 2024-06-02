@@ -1,16 +1,17 @@
+import logging
 import os.path
 import shutil
 import struct
-from typing import List, BinaryIO
+from typing import List, BinaryIO, Any
 
 import numpy as np
 
 from constant import FormatCharacter, GGUFException, GGUFTensorInfo, GGUFMetadataKV, GGUFString, \
     GGUFMetadataValueType, GGUF_METADATA_TYPR_NUMBER_SET, FORMAT_CHARACTER_DICT, FORMAT_NP_TYPE_DICT, K, GGMLType, V, \
-    GGML_QUANT_SIZES_DICT
+    GGML_QUANT_SIZES_DICT, GGUFMetadataValue
 
 VALID_MAGIC_NUMBER = b"GGUF"
-VALID_GGUF_VERSION = 3
+VALID_GGUF_VERSION = [2, 3]
 ENCODING = "utf-8"
 _TENSORS_SAVING_PATH = "./tensors_temp_saving_folder"
 
@@ -90,7 +91,7 @@ class GGUFLoader:
         check whether the version is 3.
         :return: void
         """
-        if GGUFLoader.auto_struct_unpack(self.f, FormatCharacter.UINT32) != VALID_GGUF_VERSION:
+        if GGUFLoader.auto_struct_unpack(self.f, FormatCharacter.UINT32) not in VALID_GGUF_VERSION:
             raise GGUFException("Invalid version")
 
     def _read_tensor_count(self):
@@ -180,7 +181,7 @@ class GGUFLoader:
             self._read_metadata_key_value_pairs()
             self._read_tensors_info()
             self._adjust_tensors_info(GGUFLoader.padding(self.f.tell(), self.alignment))
-            self._read_tensors()
+            # self._read_tensors()
         except GGUFException as e:
             print(e)
             self._tear_down()
