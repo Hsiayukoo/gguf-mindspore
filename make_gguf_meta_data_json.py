@@ -22,4 +22,4 @@ for meta_data in a.metadata:
         print("unsupport data type", meta_data.value_type)
 
 with open("models/llama2/llama2-7b-gguf-metadata.json", "w+", encoding="utf-8") as f:
-    json.dump(meta_data_dict, f)
+    json.dump(meta_data_dict, f, ensure_ascii=False)

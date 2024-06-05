@@ -1,7 +1,7 @@
 from read_gguf import GGUFLoader
 
 gguf_loader = GGUFLoader("llama-2-7b.Q2_K.gguf")
-gguf_loader2 = GGUFLoader("example_q2.gguf")
+gguf_loader2 = GGUFLoader("example.gguf")
 
 gguf_loader.load_and_print()
 gguf_loader2.load_and_print()
@@ -25,6 +25,7 @@ gguf_tensors_name_dimension_dict2 = {gguf_tensor_set2[i].name.string: gguf_tenso
 result1 = []
 for key in gguf_tensors_name_dimension_dict:
     result1.append(gguf_tensors_name_dimension_dict[key] == gguf_tensors_name_dimension_dict2[key])
+
 # 比较 metadta 是否一致
 result2 = []
 for key in meta_data_dict:
@@ -36,4 +37,8 @@ print(any(result2))
 print(gguf_loader.metadata_kv_count)
 print(gguf_loader2.metadata_kv_count)
 
+# 比较 tensor 的 offset 是否一致
+result3 = []
+for i, elem in enumerate(gguf_loader2.tensor_infos):
+    print(elem.name, elem.type, elem.offset)
 

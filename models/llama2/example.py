@@ -10,7 +10,7 @@ from read_gguf import GGUFLoader
 # Necessary to load the local gguf package
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from gguf import GGUFWriter  # noqa: E402
+from gguf import GGUFWriter, GGMLQuantizationType  # noqa: E402
 
 
 # Example usage:
@@ -22,9 +22,8 @@ def write_base_informations() -> None:
     # Example usage with a file
     gguf_writer = GGUFWriter("../../example.gguf", "llama")
     for metadata_key in metadata_dict:
-        print(metadata_key)
         if metadata_key == "general.architecture":
-            print("pass 了")
+            # we have set the arch in __init__ method
             continue
         if isinstance(metadata_dict[metadata_key], int):
             gguf_writer.add_uint32(metadata_key, metadata_dict[metadata_key])
@@ -37,7 +36,10 @@ def write_base_informations() -> None:
         else:
             logging.error("Unexpected metadata key type: {0} of key :{1}".format(type(metadata_dict[metadata_key]), metadata_key))
     for tensor_name in ms_helper.ckpt_dict:
-        gguf_writer.add_tensor(tensor_name, MsCkptRefactorHelper.convert_ms_tensor_to_ndarray(ms_helper.ckpt_dict[tensor_name], tensor_name))
+        ndarray_tensor = MsCkptRefactorHelper.convert_ms_tensor_to_ndarray(
+            ms_helper.ckpt_dict[tensor_name], tensor_name)
+        logging.info("ndarray tensor type: {0}".format(ndarray_tensor.dtype))
+        gguf_writer.add_tensor(tensor_name, ndarray_tensor, raw_dtype=GGMLQuantizationType.F16)
     gguf_writer.write_header_to_file()
     gguf_writer.write_kv_data_to_file()
     gguf_writer.write_tensors_to_file()

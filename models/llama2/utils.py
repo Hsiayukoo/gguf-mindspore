@@ -23,15 +23,17 @@ class MsCkptRefactorHelper:
         logging.info("now convert ms tensor name is: {0}".format(tensor_name))
         return ms_tensor.asnumpy()
 
-    def __init__(self, ms_ckpt_path: str, name_map_path: str):
+    def __init__(self, ms_ckpt_path: str, name_map_path: str, transpose: bool = False):
         """
         :param ms_ckpt_path: ms ckpt file path
         :param name_map_path: ms to gguf layer name map path
+        :param transpose: default False, means transpose the tensor
         """
         self.ckpt_dict = ms.load_checkpoint(ms_ckpt_path)
         self._name_map_path = name_map_path
         self._ms_to_gguf_map: dict = {}
         self.full_name_ms_to_gguf_map: dict = {}
+        self.need_transpose = transpose
 
     def _read_name_map_json(self):
         with open(self._name_map_path, encoding="utf-8", mode="r") as f:
@@ -49,12 +51,13 @@ class MsCkptRefactorHelper:
             self.ckpt_dict[self.full_name_ms_to_gguf_map[rename_layer]] = self.ckpt_dict.pop(rename_layer)
 
     def _layer_tensor_transpose(self):
-        for layer in self.ckpt_dict:
-            # todo: now only support 2d
-            if self.ckpt_dict[layer].dim() == 2:
-                self.ckpt_dict[layer] = ops.transpose(self.ckpt_dict[layer], (1, 0))
+        if self.need_transpose:
+            for layer in self.ckpt_dict:
+                # todo: now only support 2d
+                if self.ckpt_dict[layer].dim() == 2:
+                    self.ckpt_dict[layer] = ops.transpose(self.ckpt_dict[layer], (1, 0))
 
     def do_refactor(self):
         self._read_name_map_json()
         self._layer_rename()
-        # self._layer_tensor_transpose()
+        self._layer_tensor_transpose()
