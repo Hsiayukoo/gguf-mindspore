@@ -20,8 +20,12 @@ def write_base_informations() -> None:
     with open("llama2-7b-gguf-metadata.json", "r", encoding="utf-8") as f:
         metadata_dict = json.load(f)
     # Example usage with a file
-    gguf_writer = GGUFWriter("../../example.gguf", "llama2")
+    gguf_writer = GGUFWriter("../../example.gguf", "llama")
     for metadata_key in metadata_dict:
+        print(metadata_key)
+        if metadata_key == "general.architecture":
+            print("pass 了")
+            continue
         if isinstance(metadata_dict[metadata_key], int):
             gguf_writer.add_uint32(metadata_key, metadata_dict[metadata_key])
         elif isinstance(metadata_dict[metadata_key], float):

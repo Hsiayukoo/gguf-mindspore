@@ -64,6 +64,24 @@ class GGUFLoader:
         """adjust offset"""
         return np.uint64(cur_offset + (alignment - (cur_offset % alignment)) % alignment)
 
+    @staticmethod
+    def convert_gguf_metadata_array_to_list(gguf_meta_data: GGUFMetadataValue, meta_data_name: str):
+        """
+        convert gguf meta data type from GGUFMetadataValueGGUFArray to List
+        :param gguf_meta_data:
+        :param meta_data_name:
+        :return:
+        """
+        if isinstance(gguf_meta_data.value[0], np.int32):
+            return [int(elem) for elem in gguf_meta_data.value]
+        elif isinstance(gguf_meta_data.value[0], np.float32):
+            return [float(elem) for elem in gguf_meta_data.value]
+        elif isinstance(gguf_meta_data.value[0], str):
+            return [str(elem) for elem in gguf_meta_data.value]
+        else:
+            logging.error("unsupported data type: {0}, name is {1}".format(type(gguf_meta_data.value[0]), meta_data_name))
+            return []
+
     def _set_up(self):
         """
         setUp: open file
@@ -114,6 +132,7 @@ class GGUFLoader:
         :return:
         """
         for i in range(self.metadata_kv_count):
+
             key = GGUFLoader.get_gguf_string(self.f)
             value_type = GGUFLoader.get_gguf_metadata_value_type(self.f)
             value = GGUFLoader.get_gguf_metadata_value(self.f, value_type)
@@ -141,16 +160,21 @@ class GGUFLoader:
     def _read_tensors(self):
         """using tensors info to read tensors"""
         for i, tensor_info in enumerate(self.tensor_infos):
+
             if os.path.exists(_TENSORS_SAVING_PATH):
-                shutil.rmtree(_TENSORS_SAVING_PATH)
-                os.mkdir(_TENSORS_SAVING_PATH)
+                # shutil.rmtree(_TENSORS_SAVING_PATH)
+                # os.mkdir(_TENSORS_SAVING_PATH)
+                pass
             else:
-                os.mkdir(_TENSORS_SAVING_PATH)
-            with open(_TENSORS_SAVING_PATH + os.sep + "tensor_temp{0}.txt".format(i)) as f:
+                # os.mkdir(_TENSORS_SAVING_PATH)
+                pass
+            with open("tensor_temp{0}.txt".format(i), "w+") as f:
                 start_offset = tensor_info.offset
                 # first we should move to the start_offset
                 if tensor_info.offset >= self.f.tell():
+                    print(self.f.tell(), "---", tensor_info.name)
                     self.f.read(np.uint64(start_offset - self.f.tell()))
+                    print(self.f.tell(), "---add  ", tensor_info.name)
                     # read tensors
                     tensor_length = np.uint64(np.prod(tensor_info.dimensions))
                     block_size, type_size = GGML_QUANT_SIZES_DICT[tensor_info.type]
@@ -158,13 +182,13 @@ class GGUFLoader:
                     # we should not save tensors in memory, because it may be too large
                     if tensor_info.type == GGMLType.F32:
                         for _ in range(tensor_length):
-                            f.write(str(GGUFLoader.auto_struct_unpack(self.f, FormatCharacter.FLOAT32)) + ",")
+                            GGUFLoader.auto_struct_unpack(self.f, FormatCharacter.FLOAT32)
                     elif tensor_info.type == GGMLType.F16:
                         for _ in range(tensor_length):
-                            f.write(str(np.frombuffer(self.f.read(2), dtype=np.float16)[0]) + ",")
+                           np.frombuffer(self.f.read(2), dtype=np.float16)[0]
                     else:
                         for _ in range(int(n_bytes)):
-                            f.write(str(GGUFLoader.auto_struct_unpack(self.f, "B")) + ",")
+                            GGUFLoader.auto_struct_unpack(self.f, "B")
 
     def load_and_print(self):
         """
@@ -175,13 +199,20 @@ class GGUFLoader:
         try:
             # CAUTION: these methods should execute by ORDER!
             self._check_magic_number()
+            print("magic_number", self.f.tell())
             self._check_version()
+            print("version", self.f.tell())
             self._read_tensor_count()
+            print("tensor_count", self.f.tell())
             self._read_metadata_kv_count()
+            print("kv_count", self.f.tell())
             self._read_metadata_key_value_pairs()
+            print("kv_pairs", self.f.tell())
             self._read_tensors_info()
+            print("tensor_info", self.f.tell())
             self._adjust_tensors_info(GGUFLoader.padding(self.f.tell(), self.alignment))
-            # self._read_tensors()
+            print("adjust_tensor_info", self.f.tell())
+            self._read_tensors()
         except GGUFException as e:
             print(e)
             self._tear_down()

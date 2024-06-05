@@ -57,4 +57,4 @@ class MsCkptRefactorHelper:
     def do_refactor(self):
         self._read_name_map_json()
         self._layer_rename()
-        self._layer_tensor_transpose()
+        # self._layer_tensor_transpose()
