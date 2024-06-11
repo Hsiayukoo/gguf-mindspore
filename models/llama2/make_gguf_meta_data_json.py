@@ -4,7 +4,7 @@ from constant import GGUFMetadataValueType
 from read_gguf import GGUFLoader
 
 
-a = GGUFLoader("models/llama2/llama-2-7b.Q2_K.gguf")
+a = GGUFLoader("llama-2-7b.Q2_K.gguf")
 a.load_and_print()
 
 
@@ -21,5 +21,5 @@ for meta_data in a.metadata:
     else:
         print("unsupport data type", meta_data.value_type)
 
-with open("models/llama2/llama2-7b-gguf-metadata.json", "w+", encoding="utf-8") as f:
+with open("llama2-7b-gguf-metadata.json", "w+", encoding="utf-8") as f:
     json.dump(meta_data_dict, f, ensure_ascii=False)

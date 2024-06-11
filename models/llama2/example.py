@@ -4,20 +4,22 @@ import logging
 import sys
 from pathlib import Path
 
-from constant import GGML_TENSOR_QUANTIZE_DICT
 from models.llama2.utils import MsCkptRefactorHelper
 
 # Necessary to load the local gguf package
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from gguf import GGUFWriter  # noqa: E402
+from gguf import GGUFWriter, GGMLQuantizationType  # noqa: E402
 
 
 class Llama2Writer:
-    def __init__(self, metadata_json_path: str, tensor_ggml_types_json_path: str,
-                 layer_name_map_json_path: str, ckpt_file_path: str):
+    def __init__(self, metadata_json_path: str, layer_name_map_json_path: str, ckpt_file_path: str):
+        """
+        :param metadata_json_path: metadata_kv_pairs json file path
+        :param layer_name_map_json_path: layer name map json file path
+        :param ckpt_file_path: MindSpore json file path
+        """
         self.metadata_json_path = metadata_json_path
-        self.tensor_ggml_types_json_path = tensor_ggml_types_json_path
         self.layer_name_map_json_path = layer_name_map_json_path
         self.ckpt_file_path = ckpt_file_path
         # ms ckpt helper
@@ -26,8 +28,6 @@ class Llama2Writer:
         self.metadata_kv_pairs: dict = {}
         # gguf writer
         self.gguf_writer: GGUFWriter
-        # tensor_ggml_types_map
-        self.tensor_ggml_type_dict: dict = {}
 
     def __set_up(self):
         # init ms helper
@@ -36,9 +36,6 @@ class Llama2Writer:
         # init metadata kv pairs
         with open(self.metadata_json_path, "r", encoding="utf-8") as f:
             self.metadata_kv_pairs = json.load(f)
-        # init tensor_ggml_types_dict
-        with open(self.tensor_ggml_types_json_path, "r", encoding="utf-8") as g:
-            self.tensor_ggml_type_dict = json.load(g)
         # init gguf writer
         self.gguf_writer = GGUFWriter("example.gguf", "llama")
 
@@ -66,8 +63,7 @@ class Llama2Writer:
                 self.ms_helper.ckpt_dict[tensor_name], tensor_name)
             # write
             logging.info("ndarray tensor type: {0}".format(ndarray_tensor.dtype))
-            raw_type = GGML_TENSOR_QUANTIZE_DICT[self.tensor_ggml_type_dict[tensor_name]]
-            self.gguf_writer.add_tensor(tensor_name, ndarray_tensor, raw_dtype=raw_type)
+            self.gguf_writer.add_tensor(tensor_name, ndarray_tensor, raw_dtype=GGMLQuantizationType.F32)
 
     def __tear_down(self):
         self.gguf_writer.write_header_to_file()
@@ -84,8 +80,6 @@ class Llama2Writer:
 
 if __name__ == '__main__':
     writer = Llama2Writer(metadata_json_path="llama2-7b-gguf-metadata.json",
-                          tensor_ggml_types_json_path="llama2_7b_Q2_K_tensor_ggml_typs.json",
                           layer_name_map_json_path="llama2_layer_name_map.json",
                           ckpt_file_path="llama2_7b.ckpt")
     writer.write()
-
