@@ -17,7 +17,7 @@ _TENSORS_SAVING_PATH = "./tensors_temp_saving_folder"
 
 
 class GGUFLoader:
-    def __init__(self, gguf_file_path: str):
+    def __init__(self, gguf_file_path: str, need: bool=False):
         """
         :param gguf_file_path: gguf_file_path
         """
@@ -29,6 +29,7 @@ class GGUFLoader:
         self.f: BinaryIO = None
         self.alignment: int = 32
         self.tensors: List[List[V]] = []
+        self.need = need
 
     @staticmethod
     def auto_struct_unpack(f: BinaryIO, format_: str) -> K:
@@ -158,35 +159,32 @@ class GGUFLoader:
             self.tensor_infos[i].offset += np.uint64(adjust_offset)
 
     def _read_tensors(self):
+        if not self.need:
+            return
         """using tensors info to read tensors"""
         for i, tensor_info in enumerate(self.tensor_infos):
+            temp_tensor = []
+            start_offset = tensor_info.offset
 
-            if os.path.exists(_TENSORS_SAVING_PATH):
-                shutil.rmtree(_TENSORS_SAVING_PATH)
-                os.mkdir(_TENSORS_SAVING_PATH)
-                pass
-            else:
-                os.mkdir(_TENSORS_SAVING_PATH)
-                pass
-            with open(os.path.join(_TENSORS_SAVING_PATH, os.sep, "tensor_temp{0}.txt".format(i), "w+")) as f:
-                start_offset = tensor_info.offset
-                # first we should move to the start_offset
-                if tensor_info.offset >= self.f.tell():
-                    self.f.read(np.uint64(start_offset - self.f.tell()))
-                    # read tensors
-                    tensor_length = np.uint64(np.prod(tensor_info.dimensions))
-                    block_size, type_size = GGML_QUANT_SIZES_DICT[tensor_info.type]
-                    n_bytes = tensor_length * type_size // block_size
-                    # we should not save tensors in memory, because it may be too large
-                    if tensor_info.type == GGMLType.F32:
-                        for _ in range(tensor_length):
-                            GGUFLoader.auto_struct_unpack(self.f, FormatCharacter.FLOAT32)
-                    elif tensor_info.type == GGMLType.F16:
-                        for _ in range(tensor_length):
-                           np.frombuffer(self.f.read(2), dtype=np.float16)[0]
-                    else:
-                        for _ in range(int(n_bytes)):
-                            GGUFLoader.auto_struct_unpack(self.f, "B")
+            # first we should move to the start_offset
+            if tensor_info.offset >= self.f.tell():
+                self.f.read(np.uint64(start_offset - self.f.tell()))
+                print(tensor_info.name.string, "--", start_offset, self.f.tell())
+                # read tensors
+                tensor_length = np.uint64(np.prod(tensor_info.dimensions))
+                block_size, type_size = GGML_QUANT_SIZES_DICT[tensor_info.type]
+                n_bytes = tensor_length * type_size // block_size
+                # we should not save tensors in memory, because it may be too large
+                if tensor_info.type == GGMLType.F32:
+                    for _ in range(tensor_length):
+                        temp_tensor.append(GGUFLoader.auto_struct_unpack(self.f, FormatCharacter.FLOAT32))
+                elif tensor_info.type == GGMLType.F16:
+                    for _ in range(tensor_length):
+                        temp_tensor.append(np.frombuffer(self.f.read(2), dtype=np.float16)[0])
+                else:
+                    for _ in range(int(n_bytes)):
+                        temp_tensor.append(GGUFLoader.auto_struct_unpack(self.f, "B"))
+                self.tensors.append(temp_tensor)
 
     def load_and_print(self):
         """
@@ -204,7 +202,7 @@ class GGUFLoader:
             self._read_tensors_info()
             self._adjust_tensors_info(GGUFLoader.padding(self.f.tell(), self.alignment))
             # no need to read tensors, it may take much memory
-            # self._read_tensors()
+            self._read_tensors()
         except GGUFException as e:
             print(e)
             self._tear_down()

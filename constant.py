@@ -2,10 +2,29 @@ from enum import Enum
 import abc
 from typing import Any, List, TypeVar
 import numpy as np
+from gguf import GGMLQuantizationType
 
 
 class GGUFException(Exception):
     pass
+
+
+GGML_TENSOR_QUANTIZE_DICT = {
+    "F32": GGMLQuantizationType.F32,
+    "F16": GGMLQuantizationType.F16,
+    "Q4_0": GGMLQuantizationType.Q4_0,
+    "Q4_1": GGMLQuantizationType.Q4_1,
+    "Q5_0": GGMLQuantizationType.Q5_0,
+    "Q5_1": GGMLQuantizationType.Q5_1,
+    "Q8_0": GGMLQuantizationType.Q8_0,
+    "Q8_1": GGMLQuantizationType.Q8_1,
+    "Q2_K": GGMLQuantizationType.Q2_K,
+    "Q3_K": GGMLQuantizationType.Q3_K,
+    "Q4_K": GGMLQuantizationType.Q4_K,
+    "Q5_K": GGMLQuantizationType.Q5_K,
+    "Q6_K": GGMLQuantizationType.Q6_K,
+    "Q8_K": GGMLQuantizationType.Q8_K
+}
 
 
 class GGMLType(Enum):

@@ -4,7 +4,7 @@ from constant import GGUFMetadataValueType
 from read_gguf import GGUFLoader
 
 
-a = GGUFLoader("llama-2-7b.Q2_K.gguf")
+a = GGUFLoader("models/llama2/llama-2-7b.Q2_K.gguf")
 a.load_and_print()
 
 
