@@ -1,5 +1,5 @@
 """
-用于 layer 名称的映射
+Utils to load MindSpore ckpt file and convert to numpy ndArray
 """
 import copy
 import json

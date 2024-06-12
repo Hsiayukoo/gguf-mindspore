@@ -4,7 +4,7 @@ import logging
 import sys
 from pathlib import Path
 
-from models.llama2.utils import MsCkptRefactorHelper
+from models.ckpt_convert_util import MsCkptRefactorHelper
 
 # Necessary to load the local gguf package
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from gguf import GGUFWriter, GGMLQuantizationType  # noqa: E402
 
 
-class Llama2Writer:
+class Writer:
     def __init__(self, metadata_json_path: str, layer_name_map_json_path: str, ckpt_file_path: str):
         """
         :param metadata_json_path: metadata_kv_pairs json file path
@@ -79,7 +79,7 @@ class Llama2Writer:
 
 
 if __name__ == '__main__':
-    writer = Llama2Writer(metadata_json_path="llama2-7b-gguf-metadata.json",
-                          layer_name_map_json_path="llama2_layer_name_map.json",
-                          ckpt_file_path="llama2_7b.ckpt")
+    writer = Writer(metadata_json_path="llama2/configs/llama2-7b-gguf-metadata.json",
+                    layer_name_map_json_path="llama2/configs/llama2_layer_name_map.json",
+                    ckpt_file_path="llama2/llama2_7b.ckpt")
     writer.write()
