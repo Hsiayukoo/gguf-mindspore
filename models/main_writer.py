@@ -13,11 +13,12 @@ from gguf import GGUFWriter, GGMLQuantizationType  # noqa: E402
 
 
 class Writer:
-    def __init__(self, metadata_json_path: str, layer_name_map_json_path: str, ckpt_file_path: str):
+    def __init__(self, metadata_json_path: str, layer_name_map_json_path: str, ckpt_file_path: str, arch: str):
         """
         :param metadata_json_path: metadata_kv_pairs json file path
         :param layer_name_map_json_path: layer name map json file path
         :param ckpt_file_path: MindSpore json file path
+        :param arch: model arch, such as "baichuan", "llama"
         """
         self.metadata_json_path = metadata_json_path
         self.layer_name_map_json_path = layer_name_map_json_path
@@ -28,6 +29,8 @@ class Writer:
         self.metadata_kv_pairs: dict = {}
         # gguf writer
         self.gguf_writer: GGUFWriter
+        # arch
+        self.arch = arch
 
     def __set_up(self):
         # init ms helper
@@ -37,14 +40,17 @@ class Writer:
         with open(self.metadata_json_path, "r", encoding="utf-8") as f:
             self.metadata_kv_pairs = json.load(f)
         # init gguf writer
-        self.gguf_writer = GGUFWriter("example.gguf", "llama")
+        self.gguf_writer = GGUFWriter("example.gguf", self.arch)
 
     def __write_metadata(self):
         for metadata_key in self.metadata_kv_pairs:
             if metadata_key == "general.architecture":
                 # we have set the arch in __set_up method
                 continue
-            if isinstance(self.metadata_kv_pairs[metadata_key], int):
+            # we should check if it is bool first, because isinstance(True, int) is also True
+            if isinstance(self.metadata_kv_pairs[metadata_key], bool):
+                self.gguf_writer.add_bool(metadata_key, self.metadata_kv_pairs[metadata_key])
+            elif isinstance(self.metadata_kv_pairs[metadata_key], int):
                 self.gguf_writer.add_uint32(metadata_key, self.metadata_kv_pairs[metadata_key])
             elif isinstance(self.metadata_kv_pairs[metadata_key], float):
                 self.gguf_writer.add_float32(metadata_key, self.metadata_kv_pairs[metadata_key])
@@ -53,8 +59,8 @@ class Writer:
             elif isinstance(self.metadata_kv_pairs[metadata_key], list):
                 self.gguf_writer.add_array(metadata_key, self.metadata_kv_pairs[metadata_key])
             else:
-                logging.error("Unexpected metadata key type: {0} of key :{1}".format(type(
-                    self.metadata_kv_pairs[metadata_key]), metadata_key))
+                logging.error("Unexpected metadata key type: {0} of key :{1}", type(
+                    self.metadata_kv_pairs[metadata_key]), metadata_key)
 
     def __write_tensors(self):
         for tensor_name in self.ms_helper.ckpt_dict:
@@ -62,7 +68,7 @@ class Writer:
             ndarray_tensor = MsCkptRefactorHelper.convert_ms_tensor_to_ndarray(
                 self.ms_helper.ckpt_dict[tensor_name], tensor_name)
             # write
-            logging.info("ndarray tensor type: {0}".format(ndarray_tensor.dtype))
+            logging.info("ndarray tensor type: {0}", ndarray_tensor.dtype)
             self.gguf_writer.add_tensor(tensor_name, ndarray_tensor, raw_dtype=GGMLQuantizationType.F32)
 
     def __tear_down(self):
@@ -81,5 +87,6 @@ class Writer:
 if __name__ == '__main__':
     writer = Writer(metadata_json_path="llama2/configs/llama2-7b-gguf-metadata.json",
                     layer_name_map_json_path="llama2/configs/llama2_layer_name_map.json",
-                    ckpt_file_path="llama2/llama2_7b.ckpt")
+                    ckpt_file_path="llama2/llama2_7b.ckpt",
+                    arch="llama")
     writer.write()

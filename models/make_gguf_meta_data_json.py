@@ -27,6 +27,8 @@ class MetadataDumpHelper:
             elif metadata.value_type == GGUFMetadataValueType.ARRAY:
                 self.meta_data_dict[metadata.key.string] = GGUFLoader.convert_gguf_metadata_array_to_list(metadata,
                                                                                                           metadata.key.string)
+            elif metadata.value_type == GGUFMetadataValueType.BOOL:
+                self.meta_data_dict[metadata.key.string] = bool(metadata.value)
             else:
                 logging.error("unsupport data type {0}", metadata.value_type)
         with open(self.metadata_json_output_path, "w+", encoding="utf-8") as f:

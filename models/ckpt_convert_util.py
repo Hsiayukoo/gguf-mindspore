@@ -20,7 +20,7 @@ class MsCkptRefactorHelper:
         :param tensor_name:
         :return:
         """
-        logging.info("now convert ms tensor name is: {0}".format(tensor_name))
+        logging.info("now convert ms tensor name is: {0}", tensor_name)
         return ms_tensor.asnumpy().astype(np.float32)
 
     def __init__(self, ms_ckpt_path: str, name_map_path: str, transpose: bool = False):
