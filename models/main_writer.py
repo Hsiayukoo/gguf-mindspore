@@ -13,12 +13,14 @@ from gguf import GGUFWriter, GGMLQuantizationType  # noqa: E402
 
 
 class Writer:
-    def __init__(self, metadata_json_path: str, layer_name_map_json_path: str, ckpt_file_path: str, arch: str):
+    def __init__(self, metadata_json_path: str, layer_name_map_json_path: str,
+                 ckpt_file_path: str, arch: str, need_transpose: bool = False):
         """
         :param metadata_json_path: metadata_kv_pairs json file path
         :param layer_name_map_json_path: layer name map json file path
         :param ckpt_file_path: MindSpore json file path
         :param arch: model arch, such as "baichuan", "llama"
+        :param need_transpose: whether you need transpose, default False
         """
         self.metadata_json_path = metadata_json_path
         self.layer_name_map_json_path = layer_name_map_json_path
@@ -31,10 +33,12 @@ class Writer:
         self.gguf_writer: GGUFWriter
         # arch
         self.arch = arch
+        # whether you need transpose
+        self.transpose = need_transpose
 
     def __set_up(self):
         # init ms helper
-        self.ms_helper = MsCkptRefactorHelper(self.ckpt_file_path, self.layer_name_map_json_path)
+        self.ms_helper = MsCkptRefactorHelper(self.ckpt_file_path, self.layer_name_map_json_path, self.transpose)
         self.ms_helper.do_refactor()
         # init metadata kv pairs
         with open(self.metadata_json_path, "r", encoding="utf-8") as f:
@@ -88,5 +92,6 @@ if __name__ == '__main__':
     writer = Writer(metadata_json_path="llama2/configs/llama2-7b-gguf-metadata.json",
                     layer_name_map_json_path="llama2/configs/llama2_layer_name_map.json",
                     ckpt_file_path="llama2/llama2_7b.ckpt",
-                    arch="llama")
+                    arch="llama",
+                    need_transpose=False)
     writer.write()
