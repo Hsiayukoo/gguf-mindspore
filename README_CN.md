@@ -1,6 +1,6 @@
 # gguf-mindspore
 
-本项目帮助用户快速的将 MindSpore 生成的大模型的 ckpt 文件，转换为 Ollama 可以加载的 GGUF 格式文件。
+本项目帮助用户快速的将 MindSpore 生成的大模型的 ckpt 文件，转换为 Ollama 可以加载的 GGUF 格式文件，主要思路是针对已有的如 Hugging face 上的对应模型的 GGUF 文件，利用 MindSpore 生成的 ckpt 文件，替换掉 GGUF 文件中的张量信息部分，生成自己的 GGUF 文件。
 
 
 
@@ -12,7 +12,11 @@ mindspore
 numpy
 ```
 
+## GGUF 文件一览
 
+gguf 文件格式可以参考 [gguf文档](https://github.com/ggerganov/ggml/blob/master/docs/gguf.md)。
+
+![img.png](img.png)
 
 ## 快速使用
 
@@ -30,7 +34,24 @@ numpy
 
 4. **从 gguf 文件中提取超参数信息**
 
-​	使用 ***make_gguf_meta_data_json.py*** 来从 gguf  文件中提取相关超参数。
+​	使用 ***make_gguf_meta_data_json.py*** 来从 gguf  文件中提取相关超参数。会生成一个 json 文件，这里展示一个样例（只包含了部分内容）
+
+```json
+{
+   "general.architecture": "llama",
+   "general.name": "LLaMA v2",
+   "llama.context_length": 4096,
+   "llama.embedding_length": 4096,
+   "llama.block_count": 32,
+   "llama.feed_forward_length": 11008,
+   "llama.rope.dimension_count": 128,
+   "llama.attention.head_count": 32,
+   "llama.attention.head_count_kv": 32,
+   "llama.attention.layer_norm_rms_epsilon": 9.999999747378752e-06,
+   "general.file_type": 10,
+   "tokenizer.ggml.model": "llama"
+}
+```
 
 5. **获得 MindSpore ckpt 到 GGUF 的 layer 名称的映射字典**
 
@@ -59,18 +80,20 @@ if __name__ == '__main__':
 
 6. **在 Ollama 中导入你的模型**
 
-   首先编写你的 modelfile 文件，这很简单，你可以参考 Ollama 官方提供的 [modelfile_template]("https://github.com/ollama/ollama/blob/main/docs/modelfile.md") 也可以网上随便找个模板。当然你最简单的可以直接
+   首先编写你的 modelfile 文件，这很简单，你可以参考 Ollama 官方提供的 [modelfile_template]("https://github.com/ollama/ollama/blob/main/docs/modelfile.md") 也可以网上随便找个模板。当然你最简单的可以直接将下面的语句复制到文本文档里，然后将后缀修改为 ***.mf***。
 
 ```shell
 from ./example.gguf
 ```
 
-​	编写好 modelfile 文件后，比如文件名称叫 olla.modelfile，那么在命令窗口执行
+​	编写好 modelfile 文件后，比如文件名称叫 llama2_ms.modelfile，那么在命令窗口执行
 
 ```shell
-ollama create [取一个模型名称] -f olla.modelfile
+ollama create [取一个模型名称] -f llama_ms.modelfile
 # 举个例子
-ollama create oll -f olla.modelfile
+ollama create llama2_new -f llama2_ms.modelfile
+# here we go!
+ollama run llama2_new
 ```
 
 
