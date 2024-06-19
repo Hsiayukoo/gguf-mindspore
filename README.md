@@ -26,7 +26,7 @@ gguf 文件格式可以参考 [gguf文档](https://github.com/ggerganov/ggml/blo
 
 2. **下载作为参考的 gguf 文件用于 gguf 结构信息提取。**
 
-   本部分可以在 hugging face 等平台下载对应的模型的 gguf 文件。
+   本部分可以在 hugging face 等平台下载对应的模型的 gguf 文件。也可以在 Ollama 模型库里找到对应的模型，利用 ollama pull [模型名称] 进行下载。
 
 3. **在 <kbd>models</kbd> 目录下创建对应的模块**
 
